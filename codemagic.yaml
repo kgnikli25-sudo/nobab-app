@@ -6,16 +6,14 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - name: Create and Configure Android
+      - name: Setup Android Project
         script: |
           flutter create . --platforms=android
-          # Android minSdkVersion ও compileSdkVersion সেট করা
+          # minSdkVersion 21 সেট করা
           sed -i '' 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle.kts || true
           sed -i '' 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
-          sed -i '' 's/compileSdkVersion = flutter.compileSdkVersion/compileSdkVersion = 34/g' android/app/build.gradle.kts || true
-          sed -i '' 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle || true
       - name: Build Android APK
         script: |
-          flutter build apk --release --no-tree-shake-icons
+          flutter build apk --release
     artifacts:
       - build/**/outputs/**/*.apk
