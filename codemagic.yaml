@@ -6,6 +6,9 @@ workflows:
     environment:
       flutter: stable
     scripts:
+      - name: Create Android Structure
+        script: |
+          flutter create . --platforms=android
       - name: Build Android APK
         script: |
           flutter build apk --release
