@@ -5,12 +5,11 @@ workflows:
     max_build_duration: 30
     environment:
       flutter: stable
-      android_build_tools: 34.0.0
     scripts:
       - name: Create and Configure Android
         script: |
           flutter create . --platforms=android
-          # minSdkVersion ও compileSdkVersion ফিক্স
+          # Android minSdkVersion ও compileSdkVersion সেট করা
           sed -i '' 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle.kts || true
           sed -i '' 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
           sed -i '' 's/compileSdkVersion = flutter.compileSdkVersion/compileSdkVersion = 34/g' android/app/build.gradle.kts || true
