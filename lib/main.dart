@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,12 +131,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await [Permission.camera, Permission.microphone].request();
 
+    final List<String> channelPair = [widget.myNumber, target]..sort();
+    final String channelId = channelPair.join('_');
+
     if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => ActiveCallScreen(
-          myNumber: widget.myNumber,
+        builder: (context) => CallScreen(
+          channelId: channelId,
           targetNumber: target,
           isVideo: isVideo,
         ),
@@ -222,61 +226,161 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-class ActiveCallScreen extends StatelessWidget {
-  final String myNumber;
+class CallScreen extends StatefulWidget {
+  final String channelId;
   final String targetNumber;
   final bool isVideo;
 
-  const ActiveCallScreen({
+  const CallScreen({
     super.key,
-    required this.myNumber,
+    required this.channelId,
     required this.targetNumber,
     required this.isVideo,
   });
 
   @override
+  State<CallScreen> createState() => _CallScreenState();
+}
+
+class _CallScreenState extends State<CallScreen> {
+  int? _remoteUid;
+  bool _localUserJoined = false;
+  late RtcEngine _engine;
+
+  // টেস্ট অ্যাপ আইডি (প্রোডাকশনের জন্য agora.io কনসোল থেকে নেওয়া যায়)
+  final String _appId = "aab8b8f3e5c942e2a87fa76ecff44e5d";
+
+  @override
+  void initState() {
+    super.initState();
+    _initAgora();
+  }
+
+  Future<void> _initAgora() async {
+    _engine = createAgoraRtcEngine();
+    await _engine.initialize(RtcEngineContext(appId: _appId));
+
+    _engine.registerEventHandler(
+      RtcEngineEventHandler(
+        onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
+          setState(() {
+            _localUserJoined = true;
+          });
+        },
+        onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
+          setState(() {
+            _remoteUid = remoteUid;
+          });
+        },
+        onUserOffline: (RtcConnection connection, int remoteUid, UserOfflineReasonType reason) {
+          setState(() {
+            _remoteUid = null;
+          });
+        },
+      ),
+    );
+
+    if (widget.isVideo) {
+      await _engine.enableVideo();
+      await _engine.startPreview();
+    } else {
+      await _engine.enableAudio();
+    }
+
+    await _engine.joinChannel(
+      token: '',
+      channelId: widget.channelId,
+      uid: 0,
+      options: const ChannelMediaOptions(
+        clientRoleType: ClientRoleType.clientRoleBroadcaster,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _engine.leaveChannel();
+    _engine.release();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black87,
-      body: SafeArea(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(top: 60.0),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: const Color(0xFF0088CC),
-                    child: Text(
-                      targetNumber.isNotEmpty ? targetNumber[0] : 'U',
-                      style: const TextStyle(fontSize: 40, color: Colors.white),
-                    ),
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        title: Text(widget.isVideo ? 'ভিডিও কল' : 'ভয়েস কল', style: const TextStyle(color: Colors.white)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
+        children: [
+          Center(
+            child: widget.isVideo
+                ? (_remoteUid != null
+                    ? AgoraVideoView(
+                        controller: VideoViewController.remote(
+                          rtcEngine: _engine,
+                          canvas: VideoCanvas(uid: _remoteUid),
+                          connection: RtcConnection(channelId: widget.channelId),
+                        ),
+                      )
+                    : const Text(
+                        'কল রিং হচ্ছে / অপেক্ষমাণ...',
+                        style: TextStyle(color: Colors.white, fontSize: 16),
+                      ))
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: const Color(0xFF0088CC),
+                        child: Text(
+                          widget.targetNumber.isNotEmpty ? widget.targetNumber[0] : 'U',
+                          style: const TextStyle(fontSize: 40, color: Colors.white),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        widget.targetNumber,
+                        style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        _remoteUid != null ? 'কথা চলছে...' : 'কল রিং হচ্ছে...',
+                        style: const TextStyle(color: Colors.white70, fontSize: 16),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    targetNumber,
-                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          if (widget.isVideo && _localUserJoined)
+            Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 110,
+                height: 150,
+                child: AgoraVideoView(
+                  controller: VideoViewController(
+                    rtcEngine: _engine,
+                    canvas: const VideoCanvas(uid: 0),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    isVideo ? 'ভিডিও কল হচ্ছে...' : 'ভয়েস কল হচ্ছে...',
-                    style: const TextStyle(color: Colors.white70, fontSize: 16),
-                  ),
-                ],
+                ),
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 48.0),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 30.0),
               child: FloatingActionButton(
                 backgroundColor: Colors.red,
                 child: const Icon(Icons.call_end, color: Colors.white, size: 30),
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
