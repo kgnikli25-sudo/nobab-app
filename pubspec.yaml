@@ -1,5 +1,5 @@
 name: nobab_app
-description: "NOBAB - Ad-Free IMO style Calling & Chat App"
+description: "NOBAB - Ad-Free Clean Calling and Messaging App"
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -11,7 +11,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^1.0.6
   shared_preferences: ^2.2.2
-  zego_uikit_prebuilt_call: ^4.16.0
+  flutter_webrtc: ^0.10.7
+  permission_handler: ^11.3.1
 
 dev_dependencies:
   flutter_test:
