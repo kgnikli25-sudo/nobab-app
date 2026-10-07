@@ -9,8 +9,10 @@ workflows:
       - name: Setup Android Project
         script: |
           flutter create . --platforms=android
-          # minSdkVersion 21 সেট করা
-          sed -i '' 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle.kts || true
+          # compileSdk ও minSdk ভার্সন ৩৪ এবং ২১ এ আপডেট
+          sed -i '' 's/compileSdk = flutter.compileSdkVersion/compileSdk = 34/g' android/app/build.gradle.kts || true
+          sed -i '' 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 34/g' android/app/build.gradle || true
+          sed -i '' 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle.kts || true
           sed -i '' 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
       - name: Build Android APK
         script: |
