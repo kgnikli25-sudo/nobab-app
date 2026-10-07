@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,7 +28,6 @@ class NobabApp extends StatelessWidget {
   }
 }
 
-// 1. IMO Style Phone Number Registration Screen
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -51,7 +50,7 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sothik mobile number likhun!')),
+        const SnackBar(content: Text('সঠিক মোবাইল নম্বর লিখুন!')),
       );
     }
   }
@@ -67,7 +66,7 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.phone_android, size: 70, color: Color(0xFF0088CC)),
+              const Icon(Icons.mark_chat_unread_rounded, size: 80, color: Color(0xFF0088CC)),
               const SizedBox(height: 16),
               const Text(
                 'নবাব (NOBAB)',
@@ -76,17 +75,17 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Apnar mobile number diye shuru korun (Kono Ads chara)',
+                'বিজ্ঞাপন-মুক্ত সরাসরি কলিং ও মেসেজিং',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: TextStyle(color: Colors.grey, fontSize: 14),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  prefixIcon: const Icon(Icons.call),
-                  hintText: 'Mobile Number (e.g. 017xxxxxxxx)',
+                  prefixIcon: const Icon(Icons.phone),
+                  hintText: 'আপনার মোবাইল নম্বর লিখুন',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
@@ -99,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                child: const Text('Login / Shuru Korun', style: TextStyle(fontSize: 16)),
+                child: const Text('লগইন / প্রবেশ করুন', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -109,7 +108,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-// 2. IMO Main Screen (Dial Number to Call & Chat)
 class HomeScreen extends StatefulWidget {
   final String myNumber;
   const HomeScreen({super.key, required this.myNumber});
@@ -121,22 +119,24 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _targetController = TextEditingController();
 
-  void _startCall(bool isVideo) {
+  Future<void> _makeCall(bool isVideo) async {
     final target = _targetController.text.trim();
     if (target.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Jake call diben tar number likhun!')),
+        const SnackBar(content: Text('যাকে কল করবেন তার নম্বর লিখুন!')),
       );
       return;
     }
 
+    await [Permission.camera, Permission.microphone].request();
+
+    if (!mounted) return;
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => CallPage(
-          callID: [widget.myNumber, target]..sort(), // unique channel for both numbers
-          userID: widget.myNumber,
-          userName: widget.myNumber,
+        builder: (context) => ActiveCallScreen(
+          myNumber: widget.myNumber,
+          targetNumber: target,
           isVideo: isVideo,
         ),
       ),
@@ -170,18 +170,18 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Text(
-              'Direct IMO Calling (No Ads)',
+              'সরাসরি IMO স্টাইল কলিং',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
-            const Text('Jake call diben tar number likhe Voice ba Video Call-e chap din:'),
-            const SizedBox(height: 20),
+            const SizedBox(height: 6),
+            const Text('যাকে কল দিতে চান তার মোবাইল নম্বর লিখুন:'),
+            const SizedBox(height: 18),
             TextField(
               controller: _targetController,
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.dialpad),
-                hintText: 'Receiver Phone Number',
+                hintText: 'প্রাপকের নম্বর (যেমন: 017...)',
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
@@ -190,27 +190,27 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _startCall(false),
+                    onPressed: () => _makeCall(false),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     icon: const Icon(Icons.phone),
-                    label: const Text('Voice Call'),
+                    label: const Text('ভয়েস কল'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () => _startCall(true),
+                    onPressed: () => _makeCall(true),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0088CC),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     icon: const Icon(Icons.videocam),
-                    label: const Text('Video Call'),
+                    label: const Text('ভিডিও কল'),
                   ),
                 ),
               ],
@@ -222,37 +222,61 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-// 3. Real Audio/Video Call Screen
-class CallPage extends StatelessWidget {
-  final List<String> callID;
-  final String userID;
-  final String userName;
+class ActiveCallScreen extends StatelessWidget {
+  final String myNumber;
+  final String targetNumber;
   final bool isVideo;
 
-  const CallPage({
+  const ActiveCallScreen({
     super.key,
-    required this.callID,
-    required this.userID,
-    required this.userName,
+    required this.myNumber,
+    required this.targetNumber,
     required this.isVideo,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Demo Zego Credentials (Replace with your actual keys from zegocloud console)
-    const int appID = 123456789;
-    const String appSign = "abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890";
-
-    return SafeArea(
-      child: ZegoUIKitPrebuiltCall(
-        appID: appID,
-        appSign: appSign,
-        userID: userID,
-        userName: userName,
-        callID: callID.join('_'),
-        config: isVideo
-            ? ZegoUIKitPrebuiltCallConfig.oneOnOneVideoCall()
-            : ZegoUIKitPrebuiltCallConfig.oneOnOneVoiceCall(),
+    return Scaffold(
+      backgroundColor: Colors.black87,
+      body: SafeArea(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 60.0),
+              child: Column(
+                children: [
+                  CircleAvatar(
+                    radius: 50,
+                    backgroundColor: const Color(0xFF0088CC),
+                    child: Text(
+                      targetNumber.isNotEmpty ? targetNumber[0] : 'U',
+                      style: const TextStyle(fontSize: 40, color: Colors.white),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    targetNumber,
+                    style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    isVideo ? 'ভিডিও কল হচ্ছে...' : 'ভয়েস কল হচ্ছে...',
+                    style: const TextStyle(color: Colors.white70, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 48.0),
+              child: FloatingActionButton(
+                backgroundColor: Colors.red,
+                child: const Icon(Icons.call_end, color: Colors.white, size: 30),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
