@@ -6,9 +6,12 @@ workflows:
     environment:
       flutter: stable
     scripts:
-      - name: Create Android Structure
+      - name: Create Android Structure and Configure
         script: |
           flutter create . --platforms=android
+          # Set minSdkVersion to 21 for Zego Calling SDK
+          sed -i '' 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
+          sed -i '' 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
       - name: Build Android APK
         script: |
           flutter build apk --release
